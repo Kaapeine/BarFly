@@ -214,3 +214,40 @@ export async function applyCapacityChange(api, state, newCapacity) {
 
   return { ...state, capacity: newCapacity, entries };
 }
+
+// ---------------------------------------------------------------------------
+// Context menu helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns "Pin to bar" or "Unpin from bar" depending on the bookmark's
+ * position relative to the separator.
+ */
+export async function getContextMenuTitle(api, state, bookmarkId) {
+  const children = await api.getChildren(TOOLBAR_ID);
+  const separatorIndex = children.findIndex((c) => c.id === state.separatorId);
+  const itemIndex = children.findIndex((c) => c.id === bookmarkId);
+  if (itemIndex === -1) return "Pin to bar";
+  return itemIndex < separatorIndex ? "Unpin from bar" : "Pin to bar";
+}
+
+/**
+ * Moves a toolbar bookmark across the separator to toggle pinned/dynamic,
+ * then rebuilds entries to match the new toolbar order.
+ */
+export async function handleContextMenuTogglePin(api, state, bookmarkId) {
+  const children = await api.getChildren(TOOLBAR_ID);
+  const separatorIndex = children.findIndex((c) => c.id === state.separatorId);
+  const itemIndex = children.findIndex((c) => c.id === bookmarkId);
+  if (itemIndex === -1) return state;
+
+  const isPinned = itemIndex < separatorIndex;
+  if (isPinned) {
+    await api.moveBookmark(bookmarkId, { parentId: TOOLBAR_ID, index: separatorIndex + 1 });
+  } else {
+    await api.moveBookmark(bookmarkId, { parentId: TOOLBAR_ID, index: 0 });
+  }
+
+  const entries = await rebuildFromToolbar(api, state);
+  return { ...state, entries };
+}
