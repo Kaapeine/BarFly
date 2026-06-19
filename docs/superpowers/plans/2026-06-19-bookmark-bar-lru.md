@@ -4,7 +4,7 @@
 
 **Goal:** Build a Firefox WebExtension that automatically manages the native Bookmarks Toolbar as a pinned section + LRU-capped dynamic section, per `docs/superpowers/specs/2026-06-19-bookmark-bar-lru-design.md`.
 
-**Architecture:** Pure, browser-API-free core logic (`src/core/*`) computes state transitions from events; a thin adapter (`src/platform/browser-api.js`) is the only module that touches `browser.*`; a background script wires adapter events to core logic and applies the resulting side effects via the adapter. This keeps the core unit-testable and the Firefox/Chrome-specific surface minimal for a later port.
+**Architecture:** Pure, browser-API-free core logic (`src/core/*`) computes state transitions from events; a thin adapter (`src/platform/firefox-browser-api.js`) is the only module that touches `browser.*`; a background script wires adapter events to core logic and applies the resulting side effects via the adapter. This keeps the core unit-testable and the Firefox/Chrome-specific surface minimal for a later port.
 
 **Tech Stack:** Vanilla JavaScript (ES modules), Firefox WebExtensions APIs (`bookmarks`, `history`, `storage`, `contextMenus`), Vitest for unit tests, `web-ext` for manual/integration testing.
 
@@ -14,7 +14,7 @@
 
 - `manifest.json` — WebExtension manifest (permissions: `bookmarks`, `history`, `storage`, `contextMenus`)
 - `package.json` — Vitest + `web-ext` dev dependencies, test/run scripts
-- `src/platform/browser-api.js` — adapter: wraps `browser.bookmarks`/`browser.history`/`browser.storage` behind the operations core logic needs
+- `src/platform/firefox-browser-api.js` — adapter: wraps `browser.bookmarks`/`browser.history`/`browser.storage` behind the operations core logic needs
 - `src/core/state.js` — state shape + defaults (`pinnedFolderId`, `separatorId`, `capacity`, `dynamicMap`, `pinnedMap`)
 - `src/core/lru.js` — pure functions: `touchDynamic`, `addDynamic`, `evictToCapacity`
 - `src/core/pinned.js` — pure functions: `diffPinnedFolder` (folder contents → add/remove duplicate operations)
@@ -27,7 +27,7 @@
 - `src/background/manual-edits.js` — `handleBookmarkCreated` / `handleBookmarkMoved`: implements "Manual edits directly on the toolbar" (relocate-and-promote for untracked arrivals) and the cross-separator promote/demote flow
 - `src/background/pin-actions.js` — `promoteToPinned(api, state, originalId)` / `demoteToDynamic(api, state, originalId)`: the shared promote/demote mechanics used by both the context menu and manual-edits flows
 - `src/background/sync.js` — `handleBookmarkChanged` / `handleBookmarkRemoved`: implements the "Sync rules" (two-way rename/URL sync, delete-original-removes-duplicate, delete-pinned-duplicate self-heals via `syncPinnedFolder`, delete-dynamic-duplicate is manual eviction)
-- `src/background.js` — entry point: imports `src/platform/browser-api.js` and all `src/background/*` modules, registers all listeners, and wires the `contextMenus` items
+- `src/background.js` — entry point: imports `src/platform/firefox-browser-api.js` and all `src/background/*` modules, registers all listeners, and wires the `contextMenus` items
 - `src/options/options.html`, `src/options/options.js` — settings page (pinned folder picker, capacity input, rebuild button)
 - `tests/core/*.test.js` — unit tests for every pure core module (`state`, `lru`, `region`, `pinned`, `folder-tree`, `guard`)
 - `tests/platform/fake-browser-api.js` — in-memory fake implementing the adapter interface, used by all `tests/background/*` tests
@@ -432,7 +432,7 @@ with no branching logic, so there's nothing here worth unit-testing in
 isolation; all decision logic lives in `src/core/*`.
 
 **Files:**
-- Create: `src/platform/browser-api.js`
+- Create: `src/platform/firefox-browser-api.js`
 
 - [ ] **Step 1: Write the adapter**
 
@@ -510,7 +510,7 @@ export function setState(state) {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add src/platform/browser-api.js
+git add src/platform/firefox-browser-api.js
 git commit -m "feat: add Firefox browser API adapter"
 ```
 
@@ -726,7 +726,7 @@ pure data transforms.
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/firefox-browser-api.js";
 import { runInstall } from "../../src/background/install.js";
 
 describe("runInstall", () => {
@@ -853,7 +853,7 @@ keeping pinned duplicates ordered to match the Pinned folder.
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID } from "../../src/platform/firefox-browser-api.js";
 import { createDefaultState } from "../../src/core/state.js";
 import { syncPinnedFolder } from "../../src/background/pinned-sync.js";
 
@@ -1007,7 +1007,7 @@ recency — there is no stored order).
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID } from "../../src/platform/firefox-browser-api.js";
 import { createDefaultState } from "../../src/core/state.js";
 import { handleVisit } from "../../src/background/visits.js";
 
@@ -1200,7 +1200,7 @@ cross-separator drag handling (Task 12).
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/firefox-browser-api.js";
 import { createDefaultState } from "../../src/core/state.js";
 import { promoteToPinned, demoteToDynamic } from "../../src/background/pin-actions.js";
 
@@ -1352,7 +1352,7 @@ rather than threading exact drop-index placement through `pin-actions.js`.
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/firefox-browser-api.js";
 import { createDefaultState } from "../../src/core/state.js";
 import { handleBookmarkCreated, handleBookmarkMoved } from "../../src/background/manual-edits.js";
 
@@ -1599,7 +1599,7 @@ duplicate directly is manual eviction and intentionally does nothing else.
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID } from "../../src/platform/firefox-browser-api.js";
 import { createDefaultState } from "../../src/core/state.js";
 import { handleBookmarkChanged, handleBookmarkRemoved } from "../../src/background/sync.js";
 
@@ -1771,7 +1771,7 @@ the tail immediately; growing it takes no immediate action. Reuses
 ```js
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID } from "../../src/platform/browser-api.js";
+import { TOOLBAR_ID } from "../../src/platform/firefox-browser-api.js";
 import { createDefaultState } from "../../src/core/state.js";
 import { handleVisit } from "../../src/background/visits.js";
 import { applyCapacityChange } from "../../src/background/capacity.js";
