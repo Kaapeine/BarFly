@@ -1,0 +1,98 @@
+export function createFakeBrowserApi() {
+  let nextId = 1;
+  const nodes = new Map();
+  const listeners = { created: [], removed: [], changed: [], moved: [], visited: [] };
+  let state = null;
+
+  function childrenOf(parentId) {
+    return [...nodes.values()]
+      .filter((n) => n.parentId === parentId)
+      .sort((a, b) => a.index - b.index);
+  }
+
+  function reindex(parentId) {
+    childrenOf(parentId).forEach((n, i) => {
+      n.index = i;
+    });
+  }
+
+  return {
+    async createBookmark({ parentId, index, title, url, type = "bookmark" }) {
+      const id = String(nextId++);
+      const siblings = childrenOf(parentId);
+      const at = index ?? siblings.length;
+      for (const s of siblings) if (s.index >= at) s.index += 1;
+      const node = { id, parentId, index: at, title, url, type };
+      nodes.set(id, node);
+      listeners.created.forEach((cb) => cb(id, { ...node }));
+      return { ...node };
+    },
+
+    async removeBookmark(id) {
+      const node = nodes.get(id);
+      if (!node) return;
+      nodes.delete(id);
+      reindex(node.parentId);
+      listeners.removed.forEach((cb) => cb(id, { parentId: node.parentId, index: node.index }));
+    },
+
+    async moveBookmark(id, { parentId, index }) {
+      const node = nodes.get(id);
+      const oldParentId = node.parentId;
+      const oldIndex = node.index;
+      node.parentId = parentId;
+      node.index = index ?? childrenOf(parentId).length;
+      reindex(oldParentId);
+      reindex(parentId);
+      listeners.moved.forEach((cb) =>
+        cb(id, { parentId: node.parentId, index: node.index, oldParentId, oldIndex })
+      );
+    },
+
+    async updateBookmark(id, changes) {
+      const node = nodes.get(id);
+      Object.assign(node, changes);
+      listeners.changed.forEach((cb) => cb(id, { ...changes }));
+    },
+
+    async getBookmark(id) {
+      const node = nodes.get(id);
+      return node ? { ...node } : null;
+    },
+
+    async getChildren(parentId) {
+      return childrenOf(parentId).map((n) => ({ ...n }));
+    },
+
+    async searchBookmarksByUrl(url) {
+      return [...nodes.values()].filter((n) => n.url === url).map((n) => ({ ...n }));
+    },
+
+    onBookmarkCreated(cb) {
+      listeners.created.push(cb);
+    },
+    onBookmarkRemoved(cb) {
+      listeners.removed.push(cb);
+    },
+    onBookmarkChanged(cb) {
+      listeners.changed.push(cb);
+    },
+    onBookmarkMoved(cb) {
+      listeners.moved.push(cb);
+    },
+    onUrlVisited(cb) {
+      listeners.visited.push(cb);
+    },
+
+    _emitVisited(url) {
+      listeners.visited.forEach((cb) => cb({ url }));
+    },
+
+    async getState() {
+      return state;
+    },
+    async setState(next) {
+      state = next;
+    },
+  };
+}
