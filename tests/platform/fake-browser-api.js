@@ -31,6 +31,11 @@ export function createFakeBrowserApi() {
     async removeBookmark(id) {
       const node = nodes.get(id);
       if (!node) return;
+      if (node.type === "folder" || node.type === undefined) {
+        for (const child of childrenOf(id)) {
+          await this.removeBookmark(child.id);
+        }
+      }
       nodes.delete(id);
       reindex(node.parentId);
       listeners.removed.forEach((cb) => cb(id, { parentId: node.parentId, index: node.index }));
@@ -40,10 +45,19 @@ export function createFakeBrowserApi() {
       const node = nodes.get(id);
       const oldParentId = node.parentId;
       const oldIndex = node.index;
-      node.parentId = parentId;
-      node.index = index ?? childrenOf(parentId).length;
+
+      node.parentId = null;
       reindex(oldParentId);
+
+      node.parentId = parentId;
+      const siblings = childrenOf(parentId);
+      const targetIndex = index ?? siblings.length;
+      for (const s of siblings) {
+        if (s.index >= targetIndex) s.index += 1;
+      }
+      node.index = targetIndex;
       reindex(parentId);
+
       listeners.moved.forEach((cb) =>
         cb(id, { parentId: node.parentId, index: node.index, oldParentId, oldIndex })
       );
