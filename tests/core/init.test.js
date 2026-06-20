@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/firefox-browser-api.js";
+import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/browser-api.js";
 import { resolveInitState } from "../../src/core/init.js";
 
 describe("resolveInitState", () => {

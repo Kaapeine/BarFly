@@ -1,4 +1,4 @@
-import * as api from '../platform/firefox-browser-api.js';
+import * as api from '../platform/browser-api.js';
 
 const capacityInput = document.getElementById('capacity');
 const form = document.getElementById('settings-form');

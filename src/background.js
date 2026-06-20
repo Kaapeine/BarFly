@@ -1,5 +1,5 @@
-import * as api from "./platform/firefox-browser-api.js";
-import { TOOLBAR_ID } from "./platform/firefox-browser-api.js";
+import * as api from "./platform/browser-api.js";
+import { TOOLBAR_ID } from "./platform/browser-api.js";
 import { createSuppressionGuard } from "./core/guard.js";
 import { runInstall } from "./background/install.js";
 import { resolveInitState } from './core/init.js';

@@ -1,4 +1,4 @@
-import { TOOLBAR_ID } from "../platform/firefox-browser-api.js";
+import { TOOLBAR_ID } from "../platform/browser-api.js";
 
 /**
  * Resolves the initial BarFly state on every background script load.

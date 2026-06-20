@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFakeBrowserApi } from "../platform/fake-browser-api.js";
-import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/firefox-browser-api.js";
+import { TOOLBAR_ID, OTHER_ID } from "../../src/platform/browser-api.js";
 import { runInstall } from "../../src/background/install.js";
 
 describe("runInstall", () => {

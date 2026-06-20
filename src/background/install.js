@@ -1,4 +1,4 @@
-import { TOOLBAR_ID, OTHER_ID } from '../platform/firefox-browser-api.js';
+import { TOOLBAR_ID, OTHER_ID } from '../platform/browser-api.js';
 
 function formatDate(date) {
   return date.toISOString().slice(0, 10);
