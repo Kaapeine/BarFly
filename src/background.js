@@ -2,6 +2,7 @@ import * as api from "./platform/firefox-browser-api.js";
 import { TOOLBAR_ID } from "./platform/firefox-browser-api.js";
 import { createSuppressionGuard } from "./core/guard.js";
 import { runInstall } from "./background/install.js";
+import { resolveInitState } from './core/init.js';
 import {
   rebuildFromToolbar,
   handleVisit,
@@ -22,42 +23,17 @@ let paused = false;
 // On every background-script load: handle 4 cases based on state & separator
 const ready = guard.run(async () => {
   try {
-    const toolbarChildren = await api.getChildren(TOOLBAR_ID);
-    const existingSeparator = toolbarChildren.find(
-      (c) => c.type === 'separator',
-    );
-    const savedState = await api.getState();
+    const { state: resolved, notifications } = await resolveInitState(api, {
+      runInstall,
+    });
+    state = resolved;
 
-    if (savedState && existingSeparator) {
-      // Case 1: Normal restart — both state and separator present
-      state = savedState;
-    } else if (savedState && !existingSeparator) {
-      // Case 2: State exists but separator was deleted — recreate it
-      const separator = await api.createBookmark({
-        parentId: TOOLBAR_ID,
-        index: 0,
-        type: 'separator',
-      });
+    for (const notification of notifications) {
       try {
-        await browser.notifications.create({
-          type: 'basic',
-          iconUrl: 'icons/icon-48.png',
-          title: 'BarFly',
-          message:
-            'The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.',
-        });
+        await browser.notifications.create(notification);
       } catch {
         // notifications not supported
       }
-      state = { ...savedState, separatorId: separator.id };
-      console.warn('BarFly: separator was missing — recreated at index 0');
-    } else if (!savedState && existingSeparator) {
-      // Case 3: Storage cleared but separator exists — reconstruct from toolbar
-      state = { separatorId: existingSeparator.id, capacity: 10, entries: [] };
-      await api.setState(state);
-    } else {
-      // Case 4: Neither state nor separator — fresh install
-      state = await runInstall(api);
     }
 
     const result = await rebuildFromToolbar(api, state);
