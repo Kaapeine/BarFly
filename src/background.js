@@ -19,37 +19,47 @@ let state;
 let setupError = null;
 let paused = false;
 
-let installResolve;
-let installFired = false;
-const installPromise = new Promise((resolve) => { installResolve = resolve; });
-
-// Install-time: archive toolbar + create separator (runs once per install/update)
-browser.runtime.onInstalled.addListener(async () => {
-  installFired = true;
-  try {
-    state = await runInstall(api);
-  } finally {
-    installResolve();
-  }
-});
-
-// On every background-script load: restore state from storage, sync with toolbar
+// On every background-script load: handle 4 cases based on state & separator
 const ready = guard.run(async () => {
   try {
-    if (installFired) {
-      await installPromise;
-    }
-    state = await api.getState();
-    if (!state) {
-      console.warn("BarFly: no saved state found — creating fresh separator. Existing toolbar bookmarks left in place.");
+    const toolbarChildren = await api.getChildren(TOOLBAR_ID);
+    const existingSeparator = toolbarChildren.find(
+      (c) => c.type === 'separator',
+    );
+    const savedState = await api.getState();
+
+    if (savedState && existingSeparator) {
+      // Case 1: Normal restart — both state and separator present
+      state = savedState;
+    } else if (savedState && !existingSeparator) {
+      // Case 2: State exists but separator was deleted — recreate it
       const separator = await api.createBookmark({
         parentId: TOOLBAR_ID,
         index: 0,
-        type: "separator",
+        type: 'separator',
       });
-      state = { separatorId: separator.id, capacity: 10, entries: [] };
+      try {
+        await browser.notifications.create({
+          type: 'basic',
+          iconUrl: 'icons/icon-48.png',
+          title: 'BarFly',
+          message:
+            'The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.',
+        });
+      } catch {
+        // notifications not supported
+      }
+      state = { ...savedState, separatorId: separator.id };
+      console.warn('BarFly: separator was missing — recreated at index 0');
+    } else if (!savedState && existingSeparator) {
+      // Case 3: Storage cleared but separator exists — reconstruct from toolbar
+      state = { separatorId: existingSeparator.id, capacity: 10, entries: [] };
       await api.setState(state);
+    } else {
+      // Case 4: Neither state nor separator — fresh install
+      state = await runInstall(api);
     }
+
     const result = await rebuildFromToolbar(api, state);
     state = { ...result.state, entries: result.entries };
     await api.setState(state);
@@ -72,7 +82,6 @@ const ready = guard.run(async () => {
 
 api.onUrlVisited(async ({ url }) => {
   if (paused || guard.isSuppressed()) return;
-  await ready;
   await guard.run(async () => {
     state = await handleVisit(api, state, url);
     await api.setState(state);
@@ -81,7 +90,6 @@ api.onUrlVisited(async ({ url }) => {
 
 api.onBookmarkCreated(async (id, node) => {
   if (paused || guard.isSuppressed()) return;
-  await ready;
   await guard.run(async () => {
     state = await handleBookmarkCreated(api, state, id, node);
     await api.setState(state);
@@ -90,7 +98,6 @@ api.onBookmarkCreated(async (id, node) => {
 
 api.onBookmarkMoved(async (id, moveInfo) => {
   if (paused || guard.isSuppressed()) return;
-  await ready;
   await guard.run(async () => {
     state = await handleBookmarkMoved(api, state, id, moveInfo);
     await api.setState(state);
@@ -99,7 +106,6 @@ api.onBookmarkMoved(async (id, moveInfo) => {
 
 api.onBookmarkChanged(async (id, changeInfo) => {
   if (paused || guard.isSuppressed()) return;
-  await ready;
   await guard.run(async () => {
     state = await handleBookmarkChanged(api, state, id, changeInfo);
     await api.setState(state);
@@ -108,7 +114,6 @@ api.onBookmarkChanged(async (id, changeInfo) => {
 
 api.onBookmarkRemoved(async (id, removeInfo) => {
   if (paused || guard.isSuppressed()) return;
-  await ready;
   await guard.run(async () => {
     state = await handleBookmarkRemoved(api, state, id);
     await api.setState(state);
@@ -122,16 +127,14 @@ api.onBookmarkRemoved(async (id, removeInfo) => {
 
 // Update menu title based on whether the clicked bookmark is pinned or dynamic
 browser.contextMenus.onShown.addListener(async (info) => {
-  if (info.menuIds.indexOf("bookmark-bar-lru-toggle-pin") === -1) return;
-  await ready;
+  if (info.menuIds.indexOf('bookmark-bar-lru-toggle-pin') === -1) return;
   const title = await getContextMenuTitle(api, state, info.bookmarkId);
-  browser.contextMenus.update("bookmark-bar-lru-toggle-pin", { title });
+  browser.contextMenus.update('bookmark-bar-lru-toggle-pin', { title });
   browser.contextMenus.refresh();
 });
 
 browser.contextMenus.onClicked.addListener(async (info) => {
-  if (info.menuItemId !== "bookmark-bar-lru-toggle-pin") return;
-  await ready;
+  if (info.menuItemId !== 'bookmark-bar-lru-toggle-pin') return;
   await guard.run(async () => {
     state = await handleContextMenuTogglePin(api, state, info.bookmarkId);
     await api.setState(state);
@@ -143,22 +146,21 @@ browser.contextMenus.onClicked.addListener(async (info) => {
 // ---------------------------------------------------------------------------
 
 browser.runtime.onMessage.addListener(async (message) => {
-  await ready;
   return guard.run(async () => {
     switch (message.type) {
-      case "getSettings":
+      case 'getSettings':
         return { capacity: state.capacity };
-      case "setCapacity":
+      case 'setCapacity':
         state = await applyCapacityChange(api, state, message.capacity);
         await api.setState(state);
         return { ok: true };
-      case "rebuild": {
+      case 'rebuild': {
         const result = await rebuildFromToolbar(api, state);
         state = { ...result.state, entries: result.entries };
         await api.setState(state);
         return { ok: true };
       }
-      case "setPaused":
+      case 'setPaused':
         paused = message.paused;
         return { ok: true };
       default:
