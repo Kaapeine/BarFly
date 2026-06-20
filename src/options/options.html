@@ -17,7 +17,9 @@
       width: 100%; padding: 8px 12px; font-size: 1rem;
       border: 1px solid #c7c7cc; border-radius: 8px;
     }
-    .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .actions, .seed-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .seed-actions { margin-top: 8px; }
+    hr { border: none; border-top: 1px solid #e5e5ea; margin: 24px 0; }
     button {
       padding: 8px 20px; font-size: 0.95rem; border: none; border-radius: 8px;
       cursor: pointer; font-weight: 500;
@@ -26,6 +28,10 @@
     button.primary:hover { background: #0062cc; }
     button.secondary { background: #e5e5ea; color: #1c1c1e; }
     button.secondary:hover { background: #d1d1d6; }
+    button.danger { background: #ff3b30; color: #fff; }
+    button.danger:hover { background: #d62d20; }
+    button.caution { background: #ff9500; color: #fff; }
+    button.caution:hover { background: #e08600; }
     #status { margin-top: 12px; font-size: 0.9rem; color: #34c759; }
   </style>
 </head>
@@ -40,6 +46,16 @@
     </div>
   </form>
   <p id="status"></p>
+
+  <hr />
+
+  <h2>Test tools</h2>
+  <div class="seed-actions">
+    <button type="button" id="seed" class="caution">Seed test bookmarks</button>
+    <button type="button" id="reset" class="danger">Reset BarFly</button>
+  </div>
+  <p id="seed-status" style="font-size:0.85rem; color:#8e8e93; margin-top:8px;"></p>
+
   <script src="options.js"></script>
 </body>
 </html>
