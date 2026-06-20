@@ -7,7 +7,8 @@
     "bookmarks",
     "history",
     "storage",
-    "contextMenus"
+    "contextMenus",
+    "notifications"
   ],
   "background": {
     "scripts": ["src/background.js"],

@@ -44,8 +44,28 @@ async function addToDynamic(api, state, original) {
 
 export async function rebuildFromToolbar(api, state) {
   const children = await api.getChildren(TOOLBAR_ID);
-  const separatorIndex = children.findIndex((c) => c.id === state.separatorId);
-  if (separatorIndex === -1) return [];
+  let separatorIndex = children.findIndex((c) => c.id === state.separatorId);
+
+  // Separator missing — recreate at index 0, prompt user to position it
+  if (separatorIndex === -1) {
+    try {
+      await browser.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon-48.png",
+        title: "BarFly",
+        message: "The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.",
+      });
+    } catch {
+      // notifications not supported (e.g. tests)
+    }
+    const separator = await api.createBookmark({
+      parentId: TOOLBAR_ID,
+      index: 0,
+      type: "separator",
+    });
+    state = { ...state, separatorId: separator.id };
+    separatorIndex = 0;
+  }
 
   const entries = [];
   const missingOrigins = [];
@@ -69,7 +89,7 @@ export async function rebuildFromToolbar(api, state) {
     await api.removeBookmark(id);
   }
 
-  return entries;
+  return { entries, state };
 }
 
 // ---------------------------------------------------------------------------
@@ -176,13 +196,23 @@ export async function handleBookmarkChanged(api, state, id, changeInfo) {
 // ---------------------------------------------------------------------------
 
 export async function handleBookmarkRemoved(api, state, id) {
-  // Separator deleted — recreate it at index 0
+  // Separator deleted — recreate it at index 0 and notify the user
   if (id === state.separatorId) {
     const separator = await api.createBookmark({
       parentId: TOOLBAR_ID,
       index: 0,
       type: "separator",
     });
+    try {
+      await browser.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon-48.png",
+        title: "BarFly",
+        message: "The bookmarks toolbar separator was recreated. Drag it to your preferred position to split pinned and dynamic bookmarks.",
+      });
+    } catch {
+      // notifications not supported (e.g. tests)
+    }
     return { ...state, separatorId: separator.id };
   }
 
@@ -263,6 +293,6 @@ export async function handleContextMenuTogglePin(api, state, bookmarkId) {
     await api.moveBookmark(bookmarkId, { parentId: TOOLBAR_ID, index: 0 });
   }
 
-  const entries = await rebuildFromToolbar(api, state);
-  return { ...state, entries };
+  const result = await rebuildFromToolbar(api, state);
+  return { ...result.state, entries: result.entries };
 }

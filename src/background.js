@@ -19,15 +19,40 @@ let state;
 let setupError = null;
 let paused = false;
 
-// One-time initialization: install, then sync state with the toolbar
-const ready = guard.run(async () => {
+let installResolve;
+let installFired = false;
+const installPromise = new Promise((resolve) => { installResolve = resolve; });
+
+// Install-time: archive toolbar + create separator (runs once per install/update)
+browser.runtime.onInstalled.addListener(async () => {
+  installFired = true;
   try {
     state = await runInstall(api);
-    const entries = await rebuildFromToolbar(api, state);
-    if (entries.length > 0) {
-      state = { ...state, entries };
+  } finally {
+    installResolve();
+  }
+});
+
+// On every background-script load: restore state from storage, sync with toolbar
+const ready = guard.run(async () => {
+  try {
+    if (installFired) {
+      await installPromise;
+    }
+    state = await api.getState();
+    if (!state) {
+      console.warn("BarFly: no saved state found — creating fresh separator. Existing toolbar bookmarks left in place.");
+      const separator = await api.createBookmark({
+        parentId: TOOLBAR_ID,
+        index: 0,
+        type: "separator",
+      });
+      state = { separatorId: separator.id, capacity: 10, entries: [] };
       await api.setState(state);
     }
+    const result = await rebuildFromToolbar(api, state);
+    state = { ...result.state, entries: result.entries };
+    await api.setState(state);
 
     // Register context menu (done inside ready so errors don't block listeners)
     await browser.contextMenus.create({
@@ -128,8 +153,8 @@ browser.runtime.onMessage.addListener(async (message) => {
         await api.setState(state);
         return { ok: true };
       case "rebuild": {
-        const entries = await rebuildFromToolbar(api, state);
-        state = { ...state, entries };
+        const result = await rebuildFromToolbar(api, state);
+        state = { ...result.state, entries: result.entries };
         await api.setState(state);
         return { ok: true };
       }

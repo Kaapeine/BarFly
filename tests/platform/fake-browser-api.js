@@ -108,5 +108,11 @@ export function createFakeBrowserApi() {
     async setState(next) {
       state = next;
     },
+
+    notifications: {
+      async create() {
+        // no-op in tests
+      },
+    },
   };
 }

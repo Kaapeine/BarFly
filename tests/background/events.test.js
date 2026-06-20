@@ -23,7 +23,7 @@ describe("rebuildFromToolbar", () => {
     // separator is at index 0
     const dup = await api.createBookmark({ parentId: TOOLBAR_ID, title: "A", url: "https://a.test", index: 1 });
 
-    const entries = await rebuildFromToolbar(api, state);
+    const { entries } = await rebuildFromToolbar(api, state);
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toEqual({ originalId: orig.id, duplicateId: dup.id });
@@ -33,7 +33,7 @@ describe("rebuildFromToolbar", () => {
     const api = createFakeBrowserApi();
     const state = await runInstall(api);
 
-    const entries = await rebuildFromToolbar(api, state);
+    const { entries } = await rebuildFromToolbar(api, state);
 
     expect(entries).toEqual([]);
   });
@@ -47,7 +47,7 @@ describe("rebuildFromToolbar", () => {
     const dupA = await api.createBookmark({ parentId: TOOLBAR_ID, index: 1, title: "A", url: "https://a.test" });
     const dupB = await api.createBookmark({ parentId: TOOLBAR_ID, index: 2, title: "B", url: "https://b.test" });
 
-    const entries = await rebuildFromToolbar(api, state);
+    const { entries } = await rebuildFromToolbar(api, state);
 
     expect(entries.map((e) => e.duplicateId)).toEqual([dupA.id, dupB.id]);
   });

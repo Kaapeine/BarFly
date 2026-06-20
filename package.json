@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "web-ext run --keep-profile-changes --profile-create-if-missing --profile ./profile"
+    "start-profile": "web-ext run --keep-profile-changes --profile-create-if-missing --firefox-profile ~/.barfly-profile",
+    "start": "web-ext run"
   },
   "devDependencies": {
     "vitest": "^1.6.0",
