@@ -37,6 +37,17 @@
 </head>
 <body>
   <h1>BarFly</h1>
+
+  <div style="margin-bottom: 24px;">
+    <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+      <span style="font-weight:500;">Pause event handlers</span>
+      <input type="checkbox" id="pause-toggle" style="width:20px; height:20px;" />
+    </label>
+    <p style="font-size:0.8rem; color:#8e8e93; margin:4px 0 0 28px;">
+      When paused, BarFly ignores all bookmark changes — useful while seeding or bulk-editing.
+    </p>
+  </div>
+
   <form id="settings-form">
     <label for="capacity">Dynamic section capacity</label>
     <input id="capacity" type="number" min="1" value="10" />
@@ -52,7 +63,8 @@
   <h2>Test tools</h2>
   <div class="seed-actions">
     <button type="button" id="seed" class="caution">Seed test bookmarks</button>
-    <button type="button" id="reset" class="danger">Reset BarFly</button>
+    <button type="button" id="clear-all" class="danger">Clear all bookmarks</button>
+    <button type="button" id="reset" class="secondary">Reset BarFly</button>
   </div>
   <p id="seed-status" style="font-size:0.85rem; color:#8e8e93; margin-top:8px;"></p>
 

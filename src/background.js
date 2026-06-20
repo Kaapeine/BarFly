@@ -17,6 +17,7 @@ import {
 const guard = createSuppressionGuard();
 let state;
 let setupError = null;
+let paused = false;
 
 // One-time initialization: install, then sync state with the toolbar
 const ready = guard.run(async () => {
@@ -45,7 +46,7 @@ const ready = guard.run(async () => {
 // ---------------------------------------------------------------------------
 
 api.onUrlVisited(async ({ url }) => {
-  if (guard.isSuppressed()) return;
+  if (paused || guard.isSuppressed()) return;
   await ready;
   await guard.run(async () => {
     state = await handleVisit(api, state, url);
@@ -54,7 +55,7 @@ api.onUrlVisited(async ({ url }) => {
 });
 
 api.onBookmarkCreated(async (id, node) => {
-  if (guard.isSuppressed()) return;
+  if (paused || guard.isSuppressed()) return;
   await ready;
   await guard.run(async () => {
     state = await handleBookmarkCreated(api, state, id, node);
@@ -63,7 +64,7 @@ api.onBookmarkCreated(async (id, node) => {
 });
 
 api.onBookmarkMoved(async (id, moveInfo) => {
-  if (guard.isSuppressed()) return;
+  if (paused || guard.isSuppressed()) return;
   await ready;
   await guard.run(async () => {
     state = await handleBookmarkMoved(api, state, id, moveInfo);
@@ -72,7 +73,7 @@ api.onBookmarkMoved(async (id, moveInfo) => {
 });
 
 api.onBookmarkChanged(async (id, changeInfo) => {
-  if (guard.isSuppressed()) return;
+  if (paused || guard.isSuppressed()) return;
   await ready;
   await guard.run(async () => {
     state = await handleBookmarkChanged(api, state, id, changeInfo);
@@ -81,7 +82,7 @@ api.onBookmarkChanged(async (id, changeInfo) => {
 });
 
 api.onBookmarkRemoved(async (id, removeInfo) => {
-  if (guard.isSuppressed()) return;
+  if (paused || guard.isSuppressed()) return;
   await ready;
   await guard.run(async () => {
     state = await handleBookmarkRemoved(api, state, id);
@@ -132,6 +133,9 @@ browser.runtime.onMessage.addListener(async (message) => {
         await api.setState(state);
         return { ok: true };
       }
+      case "setPaused":
+        paused = message.paused;
+        return { ok: true };
       default:
         return undefined;
     }

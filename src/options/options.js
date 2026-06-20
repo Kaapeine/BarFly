@@ -5,6 +5,8 @@ const status = document.getElementById("status");
 const seedButton = document.getElementById("seed");
 const resetButton = document.getElementById("reset");
 const seedStatus = document.getElementById("seed-status");
+const clearAllButton = document.getElementById("clear-all");
+const pauseToggle = document.getElementById("pause-toggle");
 
 async function load() {
   const settings = await browser.runtime.sendMessage({ type: "getSettings" });
@@ -97,6 +99,37 @@ resetButton.addEventListener("click", async () => {
   } finally {
     resetButton.disabled = false;
   }
+});
+
+clearAllButton.addEventListener("click", async () => {
+  if (!confirm("Delete ALL bookmarks? This cannot be undone.")) return;
+  clearAllButton.disabled = true;
+  seedStatus.textContent = "Deleting all bookmarks...";
+  seedStatus.style.color = "#8e8e93";
+
+  try {
+    const tree = await browser.bookmarks.getTree();
+    const roots = tree[0]?.children ?? [];
+    for (const root of roots) {
+      for (const child of root.children ?? []) {
+        await browser.bookmarks.removeTree(child.id);
+      }
+    }
+    await browser.storage.local.clear();
+    seedStatus.textContent = "✅ All bookmarks deleted. Reload BarFly for a clean start.";
+    seedStatus.style.color = "#34c759";
+  } catch (err) {
+    seedStatus.textContent = `Error: ${err.message}`;
+    seedStatus.style.color = "#ff3b30";
+  } finally {
+    clearAllButton.disabled = false;
+  }
+});
+
+pauseToggle.addEventListener("change", async () => {
+  await browser.runtime.sendMessage({ type: "setPaused", paused: pauseToggle.checked });
+  seedStatus.textContent = pauseToggle.checked ? "⏸️ Event handlers paused." : "▶️ Event handlers active.";
+  seedStatus.style.color = "#8e8e93";
 });
 
 load();
