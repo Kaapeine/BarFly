@@ -129,10 +129,15 @@ export async function handleBookmarkCreated(api, state, id, node) {
 // ---------------------------------------------------------------------------
 
 export async function handleBookmarkMoved(api, state, id, moveInfo) {
-  if (moveInfo.parentId !== TOOLBAR_ID) return state;
-
-  // Find if this is a tracked duplicate
   const entry = state.entries.find((e) => e.duplicateId === id);
+
+  // Tracked duplicate moved off the toolbar — clean up entry
+  if (entry && moveInfo.parentId !== TOOLBAR_ID) {
+    const entries = state.entries.filter((e) => e.duplicateId !== id);
+    return { ...state, entries };
+  }
+
+  if (moveInfo.parentId !== TOOLBAR_ID) return state;
 
   if (!entry) {
     // Untracked item dragged onto toolbar — relocate back, then duplicate
@@ -171,6 +176,16 @@ export async function handleBookmarkChanged(api, state, id, changeInfo) {
 // ---------------------------------------------------------------------------
 
 export async function handleBookmarkRemoved(api, state, id) {
+  // Separator deleted — recreate it at index 0
+  if (id === state.separatorId) {
+    const separator = await api.createBookmark({
+      parentId: TOOLBAR_ID,
+      index: 0,
+      type: "separator",
+    });
+    return { ...state, separatorId: separator.id };
+  }
+
   const entryIdx = state.entries.findIndex((e) => e.originalId === id || e.duplicateId === id);
   if (entryIdx === -1) return state;
 

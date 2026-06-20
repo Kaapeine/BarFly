@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "web-ext run"
+    "start": "web-ext run --keep-profile-changes --profile-create-if-missing --profile ./profile"
   },
   "devDependencies": {
     "vitest": "^1.6.0",

@@ -8,20 +8,30 @@ const seedStatus = document.getElementById("seed-status");
 const clearAllButton = document.getElementById("clear-all");
 const pauseToggle = document.getElementById("pause-toggle");
 
+const stateDisplay = document.getElementById("state-display");
+
 async function load() {
   const settings = await browser.runtime.sendMessage({ type: "getSettings" });
   capacityInput.value = settings.capacity;
+  await refreshState();
+}
+
+async function refreshState() {
+  const stored = await browser.storage.local.get("state");
+  stateDisplay.textContent = JSON.stringify(stored.state ?? "null", null, 2);
 }
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   await browser.runtime.sendMessage({ type: "setCapacity", capacity: Number(capacityInput.value) });
   status.textContent = "Saved.";
+  await refreshState();
 });
 
 rebuildButton.addEventListener("click", async () => {
   await browser.runtime.sendMessage({ type: "rebuild" });
   status.textContent = "Rebuilt.";
+  await refreshState();
 });
 
 seedButton.addEventListener("click", async () => {
@@ -76,6 +86,7 @@ seedButton.addEventListener("click", async () => {
 
     // Clear BarFly state so install re-runs on next startup
     await browser.storage.local.clear();
+    await refreshState();
 
     seedStatus.textContent = `✅ Created ${pinned.length} pinned + ${toVisit.length} bookmarks. Reload BarFly (about:debugging → Reload) to see the separator.`;
     seedStatus.style.color = "#34c759";
@@ -91,6 +102,7 @@ resetButton.addEventListener("click", async () => {
   resetButton.disabled = true;
   try {
     await browser.storage.local.clear();
+    await refreshState();
     seedStatus.textContent = "✅ BarFly state cleared. Reload the extension (about:debugging → Reload) for a fresh start.";
     seedStatus.style.color = "#34c759";
   } catch (err) {
@@ -116,6 +128,7 @@ clearAllButton.addEventListener("click", async () => {
       }
     }
     await browser.storage.local.clear();
+    await refreshState();
     seedStatus.textContent = "✅ All bookmarks deleted. Reload BarFly for a clean start.";
     seedStatus.style.color = "#34c759";
   } catch (err) {
