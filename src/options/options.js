@@ -223,18 +223,37 @@ archiveBtn.addEventListener('click', async () => {
   archiveBtn.disabled = true;
   archiveBtn.textContent = 'Archiving...';
   await archiveToolbar();
-  showStep(2);
+  showStep(3);
 });
 
 skipBtn.addEventListener('click', () => {
-  showStep(2);
+  showStep(3);
 });
 
 nextBtns[0].addEventListener('click', () => showStep(1));
 backBtns[1].addEventListener('click', () => showStep(0));
-nextBtns[2].addEventListener('click', () => showStep(3));
+
+nextBtns[2].addEventListener('click', () => {
+  // If archive step is hidden (no bookmarks), skip to Capacity
+  const archiveStep = document.querySelector('[data-step="2"]');
+  if (archiveStep.style.display === 'none') {
+    showStep(3);
+  } else {
+    showStep(2);
+  }
+});
+
 backBtns[2].addEventListener('click', () => showStep(1));
-backBtns[3].addEventListener('click', () => showStep(2));
+
+backBtns[3].addEventListener('click', () => {
+  // If archive step is hidden (no bookmarks), go back to How it works
+  const archiveStep = document.querySelector('[data-step="2"]');
+  if (archiveStep.style.display === 'none') {
+    showStep(1);
+  } else {
+    showStep(2);
+  }
+});
 
 finishBtn.addEventListener('click', async () => {
   finishBtn.disabled = true;
@@ -269,9 +288,9 @@ async function load() {
     if (hasBookmarks) {
       showStep(0); // Start at Welcome
     } else {
-      // No bookmarks — skip archive step (step 1)
-      document.querySelector('[data-step="1"]').style.display = 'none';
-      showStep(0); // Still start at Welcome
+      // No bookmarks — skip archive step (step 2)
+      document.querySelector('[data-step="2"]').style.display = 'none';
+      showStep(0);
     }
     return;
   }
