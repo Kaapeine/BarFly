@@ -49,13 +49,11 @@ export async function rebuildFromToolbar(api, state) {
   // Separator missing — recreate at index 0, prompt user to position it
   if (separatorIndex === -1) {
     try {
-      await api.createNotification({
-        type: "basic",
-        title: "BarFly",
-        message: "The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.",
-      });
+      api.showAlert(
+        'The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.',
+      );
     } catch {
-      // notifications not supported (e.g. tests)
+      // alerts not supported (e.g. tests)
     }
     const separator = await api.createBookmark({
       parentId: TOOLBAR_ID,
@@ -203,13 +201,14 @@ export async function handleBookmarkRemoved(api, state, id) {
       type: "separator",
     });
     try {
-      await api.createNotification({
-        type: "basic",
-        title: "BarFly",
-        message: "The bookmarks toolbar separator was recreated. Drag it to your preferred position to split pinned and dynamic bookmarks.",
-      });
+      console.log('trying to create alert');
+      api.showAlert(
+        'The bookmarks toolbar separator was recreated. Drag it to your preferred position to split pinned and dynamic bookmarks.',
+      );
+      console.log('alert shown');
     } catch {
-      // notifications not supported (e.g. tests)
+      // alert not supported (e.g. tests)
+      console.error('alert not shown');
     }
     return { ...state, separatorId: separator.id };
   }

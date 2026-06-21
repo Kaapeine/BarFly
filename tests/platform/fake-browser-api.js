@@ -118,7 +118,7 @@ export function createFakeBrowserApi() {
       state = next;
     },
 
-    async createNotification() {
+    async showAlert() {
       // no-op in tests
     },
     async createContextMenu() {

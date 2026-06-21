@@ -34,14 +34,11 @@ export async function resolveInitState(api) {
       type: 'separator',
     });
     try {
-      await api.createNotification({
-        type: 'basic',
-        title: 'BarFly',
-        message:
-          'The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.',
-      });
+      api.showAlert(
+        'The bookmarks toolbar separator was missing and has been recreated. Drag it to your preferred position.',
+      );
     } catch {
-      // notifications not supported
+      // alerts not supported
     }
     return { state: { ...savedState, separatorId: separator.id } };
   }

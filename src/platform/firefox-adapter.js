@@ -74,8 +74,14 @@ export function createFirefoxAdapter() {
       return browser.storage.local.set({ state });
     },
 
-    createNotification(options) {
-      return browser.notifications.create(options);
+    async showAlert(message) {
+      try {
+        await browser.tabs.create({
+          url: `src/options/options.html?alert=${encodeURIComponent(message)}`,
+        });
+      } catch {
+        // ignore
+      }
     },
 
     createContextMenu(options) {

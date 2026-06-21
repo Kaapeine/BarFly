@@ -147,6 +147,15 @@ finishBtn.addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 
 async function load() {
+  // Check if opened with an alert message (separator deleted)
+  const params = new URLSearchParams(window.location.search);
+  const alertMsg = params.get('alert');
+  if (alertMsg) {
+    setTimeout(() => {
+      window.alert(alertMsg);
+    }, 500);
+  }
+
   const setupComplete = await api.getSetupComplete();
 
   if (!setupComplete) {

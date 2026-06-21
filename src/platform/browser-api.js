@@ -32,7 +32,7 @@ export const {
   onUrlVisited,
   getState,
   setState,
-  createNotification,
+  showAlert,
   createContextMenu,
   updateContextMenu,
   refreshContextMenu,

@@ -2,18 +2,10 @@
   "manifest_version": 2,
   "name": "BarFly",
   "version": "0.1.0",
-  "description": "Smart bookmarks toolbar — keeps pinned items up front, LRU-cached dynamic items after a separator.",
-  "permissions": [
-    "bookmarks",
-    "history",
-    "storage",
-    "contextMenus",
-    "notifications"
-  ],
+  "description": "Smart bookmarks toolbar - keeps pinned items up front, LRU-cached dynamic items after a separator.",
+  "permissions": ["bookmarks", "history", "storage", "contextMenus"],
   "background": {
-    "scripts": [
-      "src/background.js"
-    ],
+    "scripts": ["src/background.js"],
     "type": "module"
   },
   "options_ui": {
