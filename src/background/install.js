@@ -1,33 +1,24 @@
-import { TOOLBAR_ID, OTHER_ID } from '../platform/browser-api.js';
+import { TOOLBAR_ID } from "../platform/browser-api.js";
 
-function formatDate(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-export async function runInstall(api, now = new Date()) {
-  const existing = await api.getState();
-  if (existing) return existing;
-
-  const toolbarChildren = await api.getChildren(TOOLBAR_ID);
-
-  if (toolbarChildren.length > 0) {
-    const archiveFolder = await api.createBookmark({
-      parentId: OTHER_ID,
-      title: `Bookmarks Toolbar archived on ${formatDate(now)}`,
-      type: 'folder',
-    });
-    for (const child of toolbarChildren) {
-      await api.moveBookmark(child.id, { parentId: archiveFolder.id });
-    }
-  }
-
+/**
+ * Installs BarFly on the toolbar.
+ *
+ * Called only by the setup wizard — creates the separator and saves initial
+ * state. Archiving existing bookmarks is handled separately by the wizard
+ * before calling this function.
+ *
+ * @param {object} api - Browser API adapter
+ * @param {number} [capacity=10] - Initial dynamic section capacity
+ * @returns {Promise<object>} The saved state
+ */
+export async function runInstall(api, capacity = 10) {
   const separator = await api.createBookmark({
     parentId: TOOLBAR_ID,
     index: 0,
-    type: 'separator',
+    type: "separator",
   });
 
-  const state = { separatorId: separator.id, capacity: 10, entries: [] };
+  const state = { separatorId: separator.id, capacity, entries: [] };
   await api.setState(state);
   return state;
 }

@@ -42,4 +42,8 @@ export const {
   sendMessage,
   clearStorage,
   removeTree,
+  onInstalled,
+  openTab,
+  getSetupComplete,
+  setSetupComplete,
 } = adapter;

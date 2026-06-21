@@ -5,8 +5,8 @@
  */
 export function createFirefoxAdapter() {
   return {
-    TOOLBAR_ID: "toolbar_____",
-    OTHER_ID: "unfiled_____",
+    TOOLBAR_ID: 'toolbar_____',
+    OTHER_ID: 'unfiled_____',
 
     createBookmark({ parentId, index, title, url, type }) {
       return browser.bookmarks.create({ parentId, index, title, url, type });
@@ -66,7 +66,7 @@ export function createFirefoxAdapter() {
     },
 
     async getState() {
-      const stored = await browser.storage.local.get("state");
+      const stored = await browser.storage.local.get('state');
       return stored.state ?? null;
     },
 
@@ -112,6 +112,23 @@ export function createFirefoxAdapter() {
 
     removeTree(id) {
       return browser.bookmarks.removeTree(id);
+    },
+
+    onInstalled(callback) {
+      browser.runtime.onInstalled.addListener(callback);
+    },
+
+    openTab(url) {
+      return browser.tabs.create({ url });
+    },
+
+    async getSetupComplete() {
+      const stored = await browser.storage.local.get('setupComplete');
+      return stored.setupComplete ?? false;
+    },
+
+    setSetupComplete(value) {
+      return browser.storage.local.set({ setupComplete: value });
     },
   };
 }
