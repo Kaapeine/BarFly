@@ -3,15 +3,18 @@ import { TOOLBAR_ID } from "../platform/browser-api.js";
 /**
  * Resolves the initial BarFly state on every background script load.
  *
- * Handles 3 cases based on whether saved state and the toolbar separator exist.
- * Case 4 (no state, no separator) is not handled here — it means setup is
- * incomplete, and the background script enters setup mode instead.
+ * Handles cases based on whether saved state and the toolbar separator exist.
+ * `state` and the `setupComplete` flag are always cleared together (see
+ * clearStorage), so this is only ever called once setupComplete is true —
+ * meaning state should exist. If it doesn't, setup is treated as incomplete
+ * and the background script re-enters setup mode, regardless of whether a
+ * leftover separator is still on the toolbar.
  *
  * | # | State | Separator | Action |
  * |---|-------|-----------|--------|
  * | 1 | ✅    | ✅        | Return saved state as-is |
  * | 2 | ✅    | ❌        | Recreate separator, return state with new id |
- * | 3 | ❌    | ✅        | Reconstruct fresh state from existing separator |
+ * | 3 | ❌    | either    | Return null — setup is incomplete |
  *
  * @param {object} api - Browser API adapter
  * @returns {Promise<{state: object}>}
@@ -43,18 +46,7 @@ export async function resolveInitState(api) {
     return { state: { ...savedState, separatorId: separator.id } };
   }
 
-  if (!savedState && existingSeparator) {
-    // Case 3: Storage cleared — reconstruct from toolbar
-    const state = {
-      separatorId: existingSeparator.id,
-      capacity: 10,
-      entries: [],
-    };
-    await api.setState(state);
-    return { state };
-  }
-
-  // Case 4: No state, no separator — setup incomplete.
+  // Case 3: No state — setup incomplete.
   // The background handles this by entering setup mode.
   return { state: null };
 }

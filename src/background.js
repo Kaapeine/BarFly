@@ -7,20 +7,11 @@ import { createDispatcher } from './background/dispatch.js';
 const dispatcher = createDispatcher(api);
 
 // ---------------------------------------------------------------------------
-// Module-level listeners (registered synchronously before any await)
-// ---------------------------------------------------------------------------
-
-api.onInstalled(async ({ reason }) => {
-  if (reason === 'install') {
-    const setupComplete = await api.getSetupComplete();
-    if (!setupComplete) {
-      await api.openTab('src/options/options.html');
-    }
-  }
-});
-
-// ---------------------------------------------------------------------------
 // Initialization
+//
+// No separate onInstalled listener: init() already opens the setup wizard
+// whenever setupComplete is false, which covers a fresh install without a
+// second, duplicate tab-open.
 // ---------------------------------------------------------------------------
 
 async function init() {

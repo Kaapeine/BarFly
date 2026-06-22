@@ -35,4 +35,21 @@ describe("runInstall", () => {
 
     expect(persisted).toEqual(state);
   });
+
+  it("reuses an existing separator instead of creating a second one", async () => {
+    const api = createFakeBrowserApi();
+    const existing = await api.createBookmark({
+      parentId: TOOLBAR_ID,
+      index: 0,
+      type: "separator",
+    });
+
+    const state = await runInstall(api, 5);
+
+    expect(state.separatorId).toBe(existing.id);
+
+    const toolbarChildren = await api.getChildren(TOOLBAR_ID);
+    const separators = toolbarChildren.filter((c) => c.type === "separator");
+    expect(separators).toHaveLength(1);
+  });
 });

@@ -51,11 +51,14 @@ describe("resolveInitState", () => {
   });
 
   // -----------------------------------------------------------------------
-  // Case 3: No state, separator exists → reconstruct from toolbar
+  // Case 3: No state → setup mode, regardless of a leftover separator.
+  // setupComplete and state are always cleared together (see clearStorage),
+  // so resolveInitState is never actually called with state missing while
+  // setupComplete is still true — no state always means "go through setup".
   // -----------------------------------------------------------------------
-  it("Case 3: reconstructs state from existing separator when storage is empty", async () => {
+  it("Case 3: returns null state when storage is empty, even if a separator exists", async () => {
     const api = createFakeBrowserApi();
-    const separator = await api.createBookmark({
+    await api.createBookmark({
       parentId: TOOLBAR_ID,
       index: 0,
       type: "separator",
@@ -63,18 +66,10 @@ describe("resolveInitState", () => {
 
     const { state } = await resolveInitState(api);
 
-    expect(state.separatorId).toBe(separator.id);
-    expect(state.capacity).toBe(10);
-    expect(state.entries).toEqual([]);
-
-    const persisted = await api.getState();
-    expect(persisted).toEqual(state);
+    expect(state).toBeNull();
   });
 
-  // -----------------------------------------------------------------------
-  // Case 4: No state, no separator → setup mode
-  // -----------------------------------------------------------------------
-  it("Case 4: returns null state when neither state nor separator exist", async () => {
+  it("Case 3: returns null state when neither state nor separator exist", async () => {
     const api = createFakeBrowserApi();
 
     const { state } = await resolveInitState(api);
