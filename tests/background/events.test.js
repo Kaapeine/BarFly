@@ -172,19 +172,36 @@ describe("handleBookmarkCreated", () => {
     expect(next.entries[0].originalId).toBe(node.id);
   });
 
-  it("relocates a toolbar-created bookmark to Other Bookmarks and creates a duplicate", async () => {
+  it("relocates a toolbar-created bookmark into a 'Saved to Bookmarks Toolbar' folder and creates a duplicate", async () => {
     const api = createFakeBrowserApi();
     const state = await runInstall(api);
     const node = await api.createBookmark({ parentId: TOOLBAR_ID, title: "A", url: "https://a.test", index: 1 });
 
     const next = await handleBookmarkCreated(api, state, node.id, node);
 
-    // Original moved to Other Bookmarks
+    // Original moved into a dedicated "Saved to Bookmarks Toolbar" folder under Other Bookmarks
     const otherChildren = await api.getChildren(OTHER_ID);
-    expect(otherChildren.map((n) => n.id)).toContain(node.id);
+    const savedFolder = otherChildren.find((c) => c.type === "folder" && c.title === "Saved to Bookmarks Toolbar");
+    expect(savedFolder).toBeDefined();
+    const savedChildren = await api.getChildren(savedFolder.id);
+    expect(savedChildren.map((n) => n.id)).toContain(node.id);
     // Duplicate on toolbar
     expect(next.entries).toHaveLength(1);
     expect(next.entries[0].originalId).toBe(node.id);
+  });
+
+  it("reuses the existing 'Saved to Bookmarks Toolbar' folder instead of creating a second one", async () => {
+    const api = createFakeBrowserApi();
+    let state = await runInstall(api);
+    const a = await api.createBookmark({ parentId: TOOLBAR_ID, title: "A", url: "https://a.test", index: 1 });
+    state = await handleBookmarkCreated(api, state, a.id, a);
+
+    const b = await api.createBookmark({ parentId: TOOLBAR_ID, title: "B", url: "https://b.test", index: 1 });
+    await handleBookmarkCreated(api, state, b.id, b);
+
+    const otherChildren = await api.getChildren(OTHER_ID);
+    const savedFolders = otherChildren.filter((c) => c.type === "folder" && c.title === "Saved to Bookmarks Toolbar");
+    expect(savedFolders).toHaveLength(1);
   });
 
   it("does nothing for separator or folder types", async () => {

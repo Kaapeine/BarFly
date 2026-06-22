@@ -1,8 +1,24 @@
 import { TOOLBAR_ID, OTHER_ID } from "../platform/browser-api.js";
 
+const SAVED_TO_TOOLBAR_TITLE = 'Saved to Bookmarks Toolbar';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+async function getOrCreateSavedToolbarFolder(api) {
+  const children = await api.getChildren(OTHER_ID);
+  const existing = children.find(
+    (c) => c.type === 'folder' && c.title === SAVED_TO_TOOLBAR_TITLE,
+  );
+  if (existing) return existing.id;
+  const folder = await api.createBookmark({
+    parentId: OTHER_ID,
+    title: SAVED_TO_TOOLBAR_TITLE,
+    type: 'folder',
+  });
+  return folder.id;
+}
 
 function reorderEntries(entries, movedDuplicateId) {
   const idx = entries.findIndex((e) => e.duplicateId === movedDuplicateId);
@@ -135,8 +151,9 @@ export async function handleBookmarkCreated(api, state, id, node) {
   if (state.entries.some((e) => e.duplicateId === id)) return state;
 
   if (node.parentId === TOOLBAR_ID) {
-    // Created directly on toolbar — relocate to Other Bookmarks, add as duplicate
-    await api.moveBookmark(id, { parentId: OTHER_ID });
+    // Created directly on toolbar — relocate to a dedicated folder, add as duplicate
+    const folderId = await getOrCreateSavedToolbarFolder(api);
+    await api.moveBookmark(id, { parentId: folderId });
     return addToDynamic(api, state, node);
   }
 

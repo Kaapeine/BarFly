@@ -19,7 +19,7 @@ The result: your toolbar always shows the bookmarks you actually need, with zero
 
 BarFly works entirely through the browser's native bookmark APIs - there is no custom UI. For every bookmark you visit, BarFly creates a duplicate bookmark on the toolbar and manages its lifecycle. Pinned items stay untouched while the dynamic list is constantly updated on every bookmark visit and creation. The native toolbar keeps working exactly as expected (drag, middle-click, context menus, folder dropdowns, overflow).
 
-Since BarFly takes over the bookmarks toolbar, any bookmark saved directly to the bookmarks toolbar folder automatically gets moved to a separate folder, and BarFly shows a duplicate in the dynamic section. This is to ensure that no original bookmarks ever get deleted.
+Since BarFly takes over the bookmarks toolbar, any bookmark saved directly to the bookmarks toolbar folder automatically gets moved into a "Saved to Bookmarks Toolbar" folder under Other Bookmarks, and BarFly shows a duplicate in the dynamic section. This is to ensure that no original bookmarks ever get deleted.
 
 ### Architecture
 
@@ -62,7 +62,7 @@ Bulk bookmark operations - importing an HTML bookmarks file, or restoring a full
 
 ## Install
 
-Requires Firefox 112+.
+Requires Firefox 115+.
 
 TBD with store links
 
