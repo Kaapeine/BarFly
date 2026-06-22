@@ -56,6 +56,10 @@ Dragging a dynamic bookmark past the separator into the pinned region promotes i
 
 Renaming or changing the URL of either the original bookmark or its toolbar duplicate propagates to the other. Deleting the original removes its toolbar duplicate. Deleting a toolbar duplicate is treated as manual eviction and the original is left alone.
 
+### Bulk imports and restoring backups
+
+Bulk bookmark operations - importing an HTML bookmarks file, or restoring a full bookmarks backup - aren't supported while BarFly is active. These operations can recreate BarFly's own separator and toolbar duplicates as if they were brand-new bookmarks, which confuses the sync logic. Before doing either, use the "Pause event handlers" toggle in settings, or temporarily disable the extension, then re-enable once the operation is finished.
+
 ## Install
 
 Requires Firefox 112+.
