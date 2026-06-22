@@ -1,22 +1,10 @@
 import * as api from './platform/browser-api.js';
-import { createSuppressionGuard } from './core/guard.js';
 import { runInstall } from './background/install.js';
 import { resolveInitState } from './core/init.js';
-import {
-  rebuildFromToolbar,
-  handleVisit,
-  handleBookmarkCreated,
-  handleBookmarkMoved,
-  handleBookmarkChanged,
-  handleBookmarkRemoved,
-  applyCapacityChange,
-  getContextMenuTitle,
-  handleContextMenuTogglePin,
-} from './background/events.js';
+import { rebuildFromToolbar, applyCapacityChange, getContextMenuTitle, handleContextMenuTogglePin } from './background/events.js';
+import { createDispatcher } from './background/dispatch.js';
 
-const guard = createSuppressionGuard();
-let state;
-let paused = false;
+const dispatcher = createDispatcher(api);
 
 // ---------------------------------------------------------------------------
 // Module-level listeners (registered synchronously before any await)
@@ -61,11 +49,9 @@ async function init() {
     return;
   }
 
-  state = resolved;
-
-  const result = await rebuildFromToolbar(api, state);
-  state = { ...result.state, entries: result.entries };
-  await api.setState(state);
+  const result = await rebuildFromToolbar(api, resolved);
+  dispatcher.setState({ ...result.state, entries: result.entries });
+  await api.setState(dispatcher.getState());
   startExtension();
 }
 
@@ -82,59 +68,22 @@ function startExtension() {
   });
 
   // Bookmark & history events
-  api.onUrlVisited(async ({ url }) => {
-    if (paused || guard.isSuppressed()) return;
-    await guard.run(async () => {
-      state = await handleVisit(api, state, url);
-      await api.setState(state);
-    });
-  });
-
-  api.onBookmarkCreated(async (id, node) => {
-    if (paused || guard.isSuppressed()) return;
-    await guard.run(async () => {
-      state = await handleBookmarkCreated(api, state, id, node);
-      await api.setState(state);
-    });
-  });
-
-  api.onBookmarkMoved(async (id, moveInfo) => {
-    if (paused || guard.isSuppressed()) return;
-    await guard.run(async () => {
-      state = await handleBookmarkMoved(api, state, id, moveInfo);
-      await api.setState(state);
-    });
-  });
-
-  api.onBookmarkChanged(async (id, changeInfo) => {
-    if (paused || guard.isSuppressed()) return;
-    await guard.run(async () => {
-      state = await handleBookmarkChanged(api, state, id, changeInfo);
-      await api.setState(state);
-    });
-  });
-
-  api.onBookmarkRemoved(async (id, removeInfo) => {
-    if (paused || guard.isSuppressed()) return;
-    await guard.run(async () => {
-      state = await handleBookmarkRemoved(api, state, id);
-      await api.setState(state);
-    });
-  });
+  dispatcher.registerEventHandlers();
 
   // Context menu: update title on show
   api.onContextMenuShown(async (info) => {
     if (info.menuIds.indexOf('bookmark-bar-lru-toggle-pin') === -1) return;
-    const title = await getContextMenuTitle(api, state, info.bookmarkId);
+    const title = await getContextMenuTitle(api, dispatcher.getState(), info.bookmarkId);
     api.updateContextMenu('bookmark-bar-lru-toggle-pin', { title });
     api.refreshContextMenu();
   });
 
   api.onContextMenuClicked(async (info) => {
     if (info.menuItemId !== 'bookmark-bar-lru-toggle-pin') return;
-    await guard.run(async () => {
-      state = await handleContextMenuTogglePin(api, state, info.bookmarkId);
-      await api.setState(state);
+    await dispatcher.queue.enqueue(async () => {
+      const next = await handleContextMenuTogglePin(dispatcher.trackingApi, dispatcher.getState(), info.bookmarkId);
+      dispatcher.setState(next);
+      await api.setState(next);
     });
   });
 }
@@ -145,22 +94,24 @@ function startExtension() {
 
 function registerMessageHandlers() {
   api.onMessage(async (message) => {
-    return guard.run(async () => {
+    return dispatcher.queue.enqueue(async () => {
       switch (message.type) {
         case 'getSettings':
-          return { capacity: state?.capacity ?? 10 };
-        case 'setCapacity':
-          state = await applyCapacityChange(api, state, message.capacity);
-          await api.setState(state);
+          return { capacity: dispatcher.getState()?.capacity ?? 10 };
+        case 'setCapacity': {
+          const next = await applyCapacityChange(dispatcher.trackingApi, dispatcher.getState(), message.capacity);
+          dispatcher.setState(next);
+          await api.setState(next);
           return { ok: true };
+        }
         case 'rebuild': {
-          const result = await rebuildFromToolbar(api, state);
-          state = { ...result.state, entries: result.entries };
-          await api.setState(state);
+          const result = await rebuildFromToolbar(api, dispatcher.getState());
+          dispatcher.setState({ ...result.state, entries: result.entries });
+          await api.setState(dispatcher.getState());
           return { ok: true };
         }
         case 'setPaused':
-          paused = message.paused;
+          dispatcher.setPaused(message.paused);
           return { ok: true };
         default:
           return undefined;
@@ -183,8 +134,8 @@ async function enterSetupMode() {
     // Return a promise only for the setupComplete message
     return (async () => {
       console.log('wizard complete');
-      state = await runInstall(api, message.capacity);
-      await api.setState(state);
+      dispatcher.setState(await runInstall(api, message.capacity));
+      await api.setState(dispatcher.getState());
       await api.setSetupComplete(true);
       // Register message handlers so options page can fetch settings
       registerMessageHandlers();
