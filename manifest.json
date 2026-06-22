@@ -19,9 +19,14 @@
     "page": "src/options/options.html",
     "open_in_tab": true
   },
-  "applications": {
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "browser_specific_settings": {
     "gecko": {
-      "id": "borderify@mozilla.org"
+      "strict_min_version": "112.0"
     }
   }
 }
