@@ -203,14 +203,11 @@ export async function handleBookmarkRemoved(api, state, id) {
       type: "separator",
     });
     try {
-      console.log('trying to create alert');
       api.showAlert(
         'The bookmarks toolbar separator was recreated. Drag it to your preferred position to split pinned and dynamic bookmarks.',
       );
-      console.log('alert shown');
     } catch {
       // alert not supported (e.g. tests)
-      console.error('alert not shown');
     }
     return { ...state, separatorId: separator.id };
   }

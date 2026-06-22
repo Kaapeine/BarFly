@@ -11,7 +11,6 @@ const dispatcher = createDispatcher(api);
 // ---------------------------------------------------------------------------
 
 api.onInstalled(async ({ reason }) => {
-  console.log('On Install');
   if (reason === 'install') {
     const setupComplete = await api.getSetupComplete();
     if (!setupComplete) {
@@ -29,7 +28,6 @@ async function init() {
 
   if (!setupComplete) {
     // Enter setup mode — only listen for install events and setupComplete message.
-    console.log('setup mode enter');
     enterSetupMode();
     return;
   }
@@ -43,7 +41,6 @@ async function init() {
   if (!resolved) {
     // Case 4: state + separator both missing despite setupComplete flag.
     // This shouldn't happen in practice, but if it does, re-enter setup mode.
-    console.log('Case 4: no state or seperator');
     await api.setSetupComplete(false);
     enterSetupMode();
     return;
@@ -133,7 +130,6 @@ async function enterSetupMode() {
 
     // Return a promise only for the setupComplete message
     return (async () => {
-      console.log('wizard complete');
       dispatcher.setState(await runInstall(api, message.capacity));
       await api.setState(dispatcher.getState());
       await api.setSetupComplete(true);
