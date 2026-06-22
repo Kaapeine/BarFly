@@ -31,7 +31,7 @@ Since BarFly takes over the bookmarks toolbar, any bookmarked saved directly to 
        │                                  │
 ┌──────▼──────────┐            ┌──────────▼────────┐
 │   Core logic    │            │  Browser adapter  │
-│  (pure JS, no   │◄──────────►│  (firefox-adapter  │
+│  (pure JS, no   │◄──────────►│  (firefox-adapter │
 │   browser API)  │            │   or chrome-*)    │
 └─────────────────┘            └───────────────────┘
 ```
