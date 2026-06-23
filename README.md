@@ -23,17 +23,46 @@ Since BarFly takes over the bookmarks toolbar, any bookmark saved directly to th
 
 ### Architecture
 
-```
-┌──────────────────────────────────────────────────┐
-│                  background.js                   │
-│  (wires events → core logic → applies changes)   │
-└──────┬──────────────────────────────────┬────────┘
-       │                                  │
-┌──────▼──────────┐            ┌──────────▼────────┐
-│   Core logic    │            │  Browser adapter  │
-│  (pure JS, no   │◄──────────►│  (firefox-adapter │
-│   browser API)  │            │   or chrome-*)    │
-└─────────────────┘            └───────────────────┘
+```mermaid
+flowchart TD
+  OptionsPage[Options page]
+
+  subgraph Browser
+    BookmarkEvents[Bookmark events]
+    MessageAPI[Message API]
+    BookmarkAPI[Bookmark API]
+    Storage[(Storage)]
+  end
+
+  subgraph ServiceWorker[Service worker]
+    Init[Init]
+    CoreLogic[Core logic]
+
+    subgraph Dispatcher
+      Queue[Queue]
+      ExpectedSet[Expected set]
+      SuppressionTracking[Suppression tracking]
+    end
+  end
+
+  BookmarkEvents --> Queue
+  Init --> Queue
+  OptionsPage --> MessageAPI --> Queue
+
+  Queue -- consumes --> ExpectedSet
+  Queue --> CoreLogic
+  CoreLogic --> SuppressionTracking
+  SuppressionTracking -- marks --> ExpectedSet
+  SuppressionTracking --> BookmarkAPI
+  SuppressionTracking --> Storage
+  ExpectedSet --> Storage
+
+  Installation[Installation]
+
+  Queue -. "getSettings / setPaused" .-> Storage
+  Queue -. "setupComplete (untracked)" .-> Installation
+  Installation --> BookmarkAPI
+  Installation --> Storage
 ```
 
 ### Pinned section
