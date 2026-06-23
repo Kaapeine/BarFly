@@ -21,49 +21,6 @@ BarFly works entirely through the browser's native bookmark APIs - there is no c
 
 Since BarFly takes over the bookmarks toolbar, any bookmark saved directly to the bookmarks toolbar folder automatically gets moved into a "Saved to Bookmarks Toolbar" folder under Other Bookmarks, and BarFly shows a duplicate in the dynamic section. This is to ensure that no original bookmarks ever get deleted.
 
-### Architecture
-
-```mermaid
-flowchart TD
-  OptionsPage[Options page]
-
-  subgraph Browser
-    BookmarkEvents[Bookmark events]
-    MessageAPI[Message API]
-    BookmarkAPI[Bookmark API]
-    Storage[(Storage)]
-  end
-
-  subgraph ServiceWorker[Service worker]
-    Init[Init]
-    CoreLogic[Core logic]
-    Installation[Installation]
-
-    subgraph Dispatcher
-      Queue[Queue]
-      ExpectedSet[Expected set]
-      SuppressionTracking[Suppression tracking]
-    end
-  end
-
-  BookmarkEvents --> Queue
-  Init --> Queue
-  OptionsPage --> MessageAPI --> Queue
-
-  Queue -- consumes --> ExpectedSet
-  Queue --> CoreLogic
-  CoreLogic --> SuppressionTracking
-  SuppressionTracking -- marks --> ExpectedSet
-  SuppressionTracking --> BookmarkAPI
-  SuppressionTracking --> Storage
-  ExpectedSet --> Storage
-
-  Queue -. "getSettings / setPaused" .-> Storage
-  Queue -. "Install wizard done" .-> Installation
-  Installation -. "runInstall" .-> BookmarkAPI
-  Installation -. "setupComplete" .-> Storage
-```
-
 ### Pinned section
 
 The section before the separator - bookmarks here stay pinned on the toolbar. To add to this, just visit a bookmark and once it appears on the toolbar, drag it behind the separator to pin it.
@@ -128,6 +85,51 @@ src/
     ├── options.html       # Settings / setup wizard
     └── options.js
 ```
+
+## Architecture
+
+```mermaid
+flowchart TD
+  OptionsPage[Options page]
+
+  subgraph Browser
+    BookmarkEvents[Bookmark events]
+    MessageAPI[Message API]
+    BookmarkAPI[Bookmark API]
+    Storage[(Storage)]
+  end
+
+  subgraph ServiceWorker[Service worker]
+    Init[Init]
+    CoreLogic[Core logic]
+    Installation[Installation]
+
+    subgraph Dispatcher
+      Queue[Queue]
+      ExpectedSet[Expected set]
+      SuppressionTracking[Suppression tracking]
+    end
+  end
+
+  BookmarkEvents --> Queue
+  Init --> Queue
+  OptionsPage --> MessageAPI --> Queue
+
+  Queue -- consumes --> ExpectedSet
+  Queue --> CoreLogic
+  CoreLogic --> SuppressionTracking
+  SuppressionTracking -- marks --> ExpectedSet
+  SuppressionTracking --> BookmarkAPI
+  SuppressionTracking --> Storage
+  ExpectedSet --> Storage
+
+  Queue -. "getSettings / setPaused" .-> Storage
+  Queue -. "Install wizard done" .-> Installation
+  Installation -. "runInstall" .-> BookmarkAPI
+  Installation -. "setupComplete" .-> Storage
+```
+
+Suppression tracking is needed to prevent the extension from reacting to its own mutations. The browser fires identical events for user actions and for edits through the browser bookmarks API. The event handlers need to know if an event was fired by the extension itself in order to prevent feedback loops. So all mutations caused by the extension add a marker to the Expected Set which is then consumed in the queue when that same event shows up again and the event gets skipped. All events go through the queue to ensure state updates happen atomically, to handle bursts of bookmark events (like opening a folder of bookmarks).
 
 ## Privacy
 
