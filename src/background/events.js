@@ -20,6 +20,15 @@ async function getOrCreateSavedToolbarFolder(api) {
   return folder.id;
 }
 
+async function relocateFolderBeforeSeparator(api, state, folderId) {
+  const children = await api.getChildren(TOOLBAR_ID);
+  const separatorIndex = children.findIndex((c) => c.id === state.separatorId);
+  const itemIndex = children.findIndex((c) => c.id === folderId);
+  if (itemIndex > separatorIndex) {
+    await api.moveBookmark(folderId, { parentId: TOOLBAR_ID, index: separatorIndex });
+  }
+}
+
 function reorderEntries(entries, movedDuplicateId) {
   const idx = entries.findIndex((e) => e.duplicateId === movedDuplicateId);
   if (idx <= 0) return entries;
@@ -64,7 +73,7 @@ async function addToDynamic(api, state, original) {
 // ---------------------------------------------------------------------------
 
 export async function rebuildFromToolbar(api, state) {
-  const children = await api.getChildren(TOOLBAR_ID);
+  let children = await api.getChildren(TOOLBAR_ID);
   let separatorIndex = children.findIndex((c) => c.id === state.separatorId);
 
   // Separator missing — recreate at index 0, prompt user to position it
@@ -83,6 +92,18 @@ export async function rebuildFromToolbar(api, state) {
     });
     state = { ...state, separatorId: separator.id };
     separatorIndex = 0;
+    children = await api.getChildren(TOOLBAR_ID);
+  }
+
+  // Folders never belong in the dynamic section — relocate any found there to
+  // the end of the pinned section, preserving their relative order, before
+  // building entries from the (now-stable) toolbar layout.
+  while (true) {
+    const folder = children.slice(separatorIndex + 1).find((c) => c.type === "folder");
+    if (!folder) break;
+    await api.moveBookmark(folder.id, { parentId: TOOLBAR_ID, index: separatorIndex });
+    children = await api.getChildren(TOOLBAR_ID);
+    separatorIndex = children.findIndex((c) => c.id === state.separatorId);
   }
 
   const entries = [];
@@ -158,6 +179,13 @@ export async function handleVisit(api, state, url) {
 // ---------------------------------------------------------------------------
 
 export async function handleBookmarkCreated(api, state, id, node) {
+  if (node.type === "folder") {
+    if (node.parentId === TOOLBAR_ID) {
+      await relocateFolderBeforeSeparator(api, state, id);
+    }
+    return state;
+  }
+
   if (node.type !== "bookmark") return state;
 
   // Guard: if this is a duplicate we just created ourselves, skip
@@ -189,12 +217,21 @@ export async function handleBookmarkMoved(api, state, id, moveInfo) {
   if (moveInfo.parentId !== TOOLBAR_ID) return state;
 
   if (!entry) {
+    const bookmark = await api.getBookmark(id);
+
+    // Folders never belong in the dynamic section — whether dragged in from
+    // elsewhere or moved there from the pinned section, send them back to
+    // just before the separator instead of duplicating or relocating them.
+    if (bookmark && bookmark.type === 'folder') {
+      await relocateFolderBeforeSeparator(api, state, id);
+      return state;
+    }
+
     // Untracked item dragged onto toolbar — relocate back, then duplicate
     if (moveInfo.oldParentId && moveInfo.oldParentId !== TOOLBAR_ID) {
-      const bookmark = await api.getBookmark(id);
-      // Only bookmarks get duplicated. A folder or separator dragged onto the
-      // toolbar isn't a duplicate of anything — leave it where the user
-      // dropped it (duplicating it would create a junk url-less node).
+      // Only bookmarks get duplicated. A separator dragged onto the toolbar
+      // isn't a duplicate of anything — leave it where the user dropped it
+      // (duplicating it would create a junk url-less node).
       if (!bookmark || bookmark.type !== 'bookmark') return state;
       await api.moveBookmark(id, { parentId: moveInfo.oldParentId, index: moveInfo.oldIndex });
       // The dragged bookmark may itself be the *original* of an existing

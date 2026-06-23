@@ -5,6 +5,25 @@ All notable changes to BarFly are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-23
+
+### Added
+- Folders on the toolbar are now always kept in the pinned section. A folder
+  dragged onto the dynamic section (from elsewhere, or from within the
+  toolbar), created directly there, or found there on startup is
+  automatically relocated to the end of the pinned section instead of
+  drifting or getting evicted as dynamic items shift around it.
+
+## [1.2.0] - 2026-06-23
+
+### Fixed
+- Folder deletion no longer silently fails to clean up orphaned toolbar
+  duplicates in some cases. The previous fix relied on walking the deleted
+  subtree from the removal event, but Firefox's `onRemoved` event does not
+  include a removed folder's children, so that data was never there to walk.
+  Orphaned duplicates are now detected by checking each tracked original's
+  liveness directly.
+
 ## [1.1.0] - 2026-06-23
 
 ### Added
@@ -42,5 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release: a smart bookmarks toolbar that keeps pinned items up front
   and an LRU-cached set of dynamic items after a separator.
 
+[1.3.0]: https://github.com/Kaapeine/Barfly/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/Kaapeine/Barfly/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Kaapeine/Barfly/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kaapeine/Barfly/releases/tag/v1.0.0

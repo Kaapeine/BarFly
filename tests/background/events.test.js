@@ -29,6 +29,22 @@ describe("rebuildFromToolbar", () => {
     expect(entries[0]).toEqual({ originalId: orig.id, duplicateId: dup.id });
   });
 
+  it("relocates folders found in the dynamic section back to the pinned section, preserving their order", async () => {
+    const api = createFakeBrowserApi();
+    const state = await runInstall(api);
+    // separator at index 0
+    const f1 = await api.createBookmark({ parentId: TOOLBAR_ID, title: "F1", type: "folder", index: 1 });
+    const x = await api.createBookmark({ parentId: TOOLBAR_ID, title: "X", url: "https://x.test", index: 2 });
+    const f2 = await api.createBookmark({ parentId: TOOLBAR_ID, title: "F2", type: "folder", index: 3 });
+
+    await rebuildFromToolbar(api, state);
+
+    const toolbar = await api.getChildren(TOOLBAR_ID);
+    const sepIdx = toolbar.findIndex((c) => c.id === state.separatorId);
+    expect(toolbar.slice(0, sepIdx).map((c) => c.id)).toEqual([f1.id, f2.id]);
+    expect(toolbar.slice(sepIdx + 1).map((c) => c.id)).toEqual([x.id]);
+  });
+
   it("returns empty array if toolbar only has the separator", async () => {
     const api = createFakeBrowserApi();
     const state = await runInstall(api);
@@ -228,13 +244,37 @@ describe("handleBookmarkCreated", () => {
     expect(savedFolders).toHaveLength(1);
   });
 
-  it("does nothing for separator or folder types", async () => {
+  it("does nothing for separator types", async () => {
     const api = createFakeBrowserApi();
     const state = await runInstall(api);
 
     const next = await handleBookmarkCreated(api, state, "some-id", { type: "separator" });
 
     expect(next).toEqual(state);
+  });
+
+  it("relocates a folder created in the dynamic section back to the pinned section", async () => {
+    const api = createFakeBrowserApi();
+    const state = await runInstall(api);
+    const folder = await api.createBookmark({ parentId: TOOLBAR_ID, title: "MyFolder", type: "folder", index: 1 });
+
+    const next = await handleBookmarkCreated(api, state, folder.id, folder);
+
+    expect(next).toEqual(state);
+    const toolbar = await api.getChildren(TOOLBAR_ID);
+    const sepIdx = toolbar.findIndex((c) => c.id === state.separatorId);
+    expect(toolbar.findIndex((c) => c.id === folder.id)).toBeLessThan(sepIdx);
+  });
+
+  it("leaves a folder created in the pinned section alone", async () => {
+    const api = createFakeBrowserApi();
+    const state = await runInstall(api);
+    const folder = await api.createBookmark({ parentId: TOOLBAR_ID, title: "MyFolder", type: "folder", index: 0 });
+
+    await handleBookmarkCreated(api, state, folder.id, folder);
+
+    const toolbar = await api.getChildren(TOOLBAR_ID);
+    expect(toolbar[0].id).toBe(folder.id);
   });
 });
 
@@ -351,7 +391,7 @@ describe("handleBookmarkMoved", () => {
     expect(await api.getBookmark(bare.id)).not.toBeNull();
   });
 
-  it("does not duplicate a folder dragged onto the toolbar", async () => {
+  it("does not duplicate a folder dragged onto the toolbar, and relocates it to the pinned section", async () => {
     const api = createFakeBrowserApi();
     const state = await runInstall(api);
     const folder = await api.createBookmark({ parentId: OTHER_ID, title: "MyFolder", type: "folder" });
@@ -368,6 +408,29 @@ describe("handleBookmarkMoved", () => {
     expect(next.entries).toHaveLength(0);
     const toolbar = await api.getChildren(TOOLBAR_ID);
     expect(toolbar.filter((c) => c.type === "bookmark" && !c.url)).toHaveLength(0);
+    // Folder lands in the pinned section, before the separator.
+    const sepIdx = toolbar.findIndex((c) => c.id === state.separatorId);
+    expect(toolbar.findIndex((c) => c.id === folder.id)).toBeLessThan(sepIdx);
+  });
+
+  it("relocates a folder dragged within the toolbar from pinned into the dynamic section back to pinned", async () => {
+    const api = createFakeBrowserApi();
+    const state = await runInstall(api);
+    const folder = await api.createBookmark({ parentId: TOOLBAR_ID, title: "MyFolder", type: "folder", index: 0 });
+    // separator now at index 1. Drag folder past the separator into dynamic.
+    await api.moveBookmark(folder.id, { parentId: TOOLBAR_ID, index: 2 });
+
+    const next = await handleBookmarkMoved(api, state, folder.id, {
+      parentId: TOOLBAR_ID,
+      index: 2,
+      oldParentId: TOOLBAR_ID,
+      oldIndex: 0,
+    });
+
+    expect(next).toEqual(state);
+    const toolbar = await api.getChildren(TOOLBAR_ID);
+    const sepIdx = toolbar.findIndex((c) => c.id === state.separatorId);
+    expect(toolbar.findIndex((c) => c.id === folder.id)).toBeLessThan(sepIdx);
   });
 });
 
