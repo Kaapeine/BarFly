@@ -101,8 +101,15 @@ async function init() {
     return;
   }
 
-  const result = await rebuildFromToolbar(api, resolved);
-  await dispatcher.setState({ ...result.state, entries: result.entries });
+  // Run through the dispatcher's queue, not directly: a wake-up can coincide
+  // with in-flight bookmark events (e.g. the multi-item drag that woke this
+  // worker). Racing them lets rebuildFromToolbar see a dragged bookmark
+  // sitting bare on the toolbar — not yet split into original+duplicate by
+  // the queued handler — and delete it as a false "orphan".
+  await dispatcher.queue.enqueue(async () => {
+    const result = await rebuildFromToolbar(api, resolved);
+    await dispatcher.setState({ ...result.state, entries: result.entries });
+  });
 }
 
 init();
